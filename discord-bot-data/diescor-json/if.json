@@ -1,0 +1,141 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "everyXMinutes",
+        "minutes": 5
+      },
+      "name": "Cron 5min",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "query": "SELECT * FROM discord_messages WHERE replied = false;"
+      },
+      "name": "Get Pending Messages",
+      "type": "n8n-nodes-base.database",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Filter only messages older than 2 hours\nconst now = Date.now();\nconst twoHours = 2 * 60 * 60 * 1000;\nreturn items.filter(item => {\n  const msgTime = new Date(item.json.timestamp).getTime();\n  return (now - msgTime) >= twoHours;\n});"
+      },
+      "name": "Filter 2h Old",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Check if responsible user replied\nconst responsibleId = $json[\"responsible_user_id\"];\nconst originalTime = new Date($json[\"timestamp\"]).getTime();\nconst messages = $json[\"body\"];\n\nif (!Array.isArray(messages)) {\n  return [{ replied: \"false\" }];\n}\n\nconst replied = messages.some(\n  (m) => m.author.id === responsibleId && new Date(m.timestamp).getTime() > originalTime\n);\n\nreturn [{ replied: replied.toString() }];"
+      },
+      "name": "Check User Reply",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"replied\"]}}",
+              "operation": "equal",
+              "value2": "false"
+            }
+          ]
+        }
+      },
+      "name": "Did Not Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "message": "⚠️ You haven't replied in the channel within 2 hours!",
+        "channel": "DM"
+      },
+      "name": "Send DM",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "operation": "query",
+        "query": "UPDATE discord_messages SET replied = true WHERE message_id = '={{$json[\"message_id\"]}}';"
+      },
+      "name": "Mark Replied",
+      "type": "n8n-nodes-base.database",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Cron 5min": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Messages": {
+      "main": [
+        [
+          {
+            "node": "Filter 2h Old",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter 2h Old": {
+      "main": [
+        [
+          {
+            "node": "Check User Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check User Reply": {
+      "main": [
+        [
+          {
+            "node": "Did Not Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Did Not Reply?": {
+      "main": [
+        [
+          {
+            "node": "Send DM",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Mark Replied",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  }
+}
