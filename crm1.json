@@ -1,0 +1,144 @@
+{
+  "name": "Auto-Create Client Folder + Docs",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "client-alert",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const text = $json[\"body\"][\"content\"];\nconst match = text.match(/Name:\\s*(.+)/);\nconst clientName = match ? match[1].trim() : \"Unknown\";\nreturn [{ json: { clientName } }];"
+      },
+      "id": "2",
+      "name": "Extract Client Name",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "createFolder",
+        "resource": "folder",
+        "name": "={{$json[\"clientName\"]}}",
+        "parentId": "1ZE03ctQFDI-zoehDYz--hgI5f-bdzioM"
+      },
+      "id": "3",
+      "name": "Create Client Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "credentials": {
+        "googleDriveOAuth2Api": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID"
+      },
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const name = $json.clientName;\nreturn [{ subfolders: [\n  `${name} - Email Notes`,\n  `${name} - Audience Research Template`,\n  `${name} Campaign Calendar`,\n  `${name} Setup Timeline`,\n  `New Client Checklist - ${name}`\n] }];"
+      },
+      "id": "4",
+      "name": "Build File List",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 500]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "field": "subfolders"
+      },
+      "id": "5",
+      "name": "Split File Names",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [750, 500]
+    },
+    {
+      "parameters": {
+        "operation": "createFile",
+        "resource": "file",
+        "name": "={{$json}}",
+        "mimeType": "application/vnd.google-apps.document",
+        "parents": [
+          "={{$node[\"Create Client Folder\"].json.id}}"
+        ]
+      },
+      "id": "6",
+      "name": "Create Each Doc",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 1,
+      "credentials": {
+        "googleDriveOAuth2Api": "YOUR_GOOGLE_DRIVE_CREDENTIAL_ID"
+      },
+      "position": [1000, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Client Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Client Name": {
+      "main": [
+        [
+          {
+            "node": "Create Client Folder",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build File List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build File List": {
+      "main": [
+        [
+          {
+            "node": "Split File Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Client Folder": {
+      "main": [
+        [
+          {
+            "node": "Split File Names",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split File Names": {
+      "main": [
+        [
+          {
+            "node": "Create Each Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

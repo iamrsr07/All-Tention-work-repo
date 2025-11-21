@@ -1,0 +1,176 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Set Client Name",
+      "type": "n8n-nodes-base.set",
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "clientName",
+              "value": "Rajeev"
+            }
+          ]
+        }
+      },
+      "position": [300, 300]
+    },
+    {
+      "id": "2",
+      "name": "Create Client Folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "parameters": {
+        "operation": "create",
+        "resource": "folder",
+        "parentId": "",
+        "name": "={{$json.clientName}}",
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID"
+        }
+      },
+      "position": [600, 300]
+    },
+    {
+      "id": "3",
+      "name": "Email Notes",
+      "type": "n8n-nodes-base.googleDrive",
+      "parameters": {
+        "operation": "create",
+        "resource": "file",
+        "name": "={{$json.clientName}} - Email Notes",
+        "mimeType": "application/vnd.google-apps.document",
+        "parents": [
+          "={{$node[\"Create Client Folder\"].json[\"id\"]}}"
+        ]
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID"
+        }
+      },
+      "position": [900, 100]
+    },
+    {
+      "id": "4",
+      "name": "Audience Research Template",
+      "type": "n8n-nodes-base.googleDrive",
+      "parameters": {
+        "operation": "create",
+        "resource": "file",
+        "name": "={{$json.clientName}} - Audience Research Template",
+        "mimeType": "application/vnd.google-apps.document",
+        "parents": [
+          "={{$node[\"Create Client Folder\"].json[\"id\"]}}"
+        ]
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID"
+        }
+      },
+      "position": [900, 250]
+    },
+    {
+      "id": "5",
+      "name": "Campaign Calendar",
+      "type": "n8n-nodes-base.googleDrive",
+      "parameters": {
+        "operation": "create",
+        "resource": "file",
+        "name": "={{$json.clientName}} Campaign Calendar",
+        "mimeType": "application/vnd.google-apps.spreadsheet",
+        "parents": [
+          "={{$node[\"Create Client Folder\"].json[\"id\"]}}"
+        ]
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID"
+        }
+      },
+      "position": [900, 400]
+    },
+    {
+      "id": "6",
+      "name": "Setup Timeline",
+      "type": "n8n-nodes-base.googleDrive",
+      "parameters": {
+        "operation": "create",
+        "resource": "file",
+        "name": "={{$json.clientName}} Setup Timeline",
+        "mimeType": "application/vnd.google-apps.document",
+        "parents": [
+          "={{$node[\"Create Client Folder\"].json[\"id\"]}}"
+        ]
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID"
+        }
+      },
+      "position": [900, 550]
+    },
+    {
+      "id": "7",
+      "name": "New Client Checklist",
+      "type": "n8n-nodes-base.googleDrive",
+      "parameters": {
+        "operation": "create",
+        "resource": "file",
+        "name": "New Client Checklist - ={{$json.clientName}}",
+        "mimeType": "application/vnd.google-apps.document",
+        "parents": [
+          "={{$node[\"Create Client Folder\"].json[\"id\"]}}"
+        ]
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "YOUR_CREDENTIAL_ID"
+        }
+      },
+      "position": [900, 700]
+    }
+  ],
+  "connections": {
+    "Set Client Name": {
+      "main": [
+        [
+          {
+            "node": "Create Client Folder",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Create Client Folder": {
+      "main": [
+        [
+          {
+            "node": "Email Notes",
+            "type": "main"
+          },
+          {
+            "node": "Audience Research Template",
+            "type": "main"
+          },
+          {
+            "node": "Campaign Calendar",
+            "type": "main"
+          },
+          {
+            "node": "Setup Timeline",
+            "type": "main"
+          },
+          {
+            "node": "New Client Checklist",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  }
+}
