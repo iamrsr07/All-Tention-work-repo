@@ -2,7 +2,7 @@ async function getClassifiedForms() {
   const res = await fetch("https://a.klaviyo.com/api/forms", {
     method: "GET",
     headers: {
-      "Authorization": "Klaviyo-API-Key pk_79414f685bdfcb0c4d1bb27a37d70ab65a",
+      "Authorization": "Klaviyo-API-Key pk_e65a428667898e5521947c7f27ea033f1e",
       "accept": "application/vnd.api+json",
       "revision": "2024-10-15"
     }

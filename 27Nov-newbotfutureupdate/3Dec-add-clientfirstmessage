@@ -1,0 +1,717 @@
+import { Client, GatewayIntentBits, Partials } from "discord.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions
+  ],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction],
+});
+
+// === CONFIG ===
+const SUPERVISORS = [
+  {
+    id: "1176921674847899658", //Prajit
+    channels: [
+      "1337431949479907399", //prepa-pizza
+      "1331965624972218471", //holistic-honey
+      "1390384030289100923", // club-furniture
+      "1395279077492920340", //astrid-organics
+      "1398040825233145907", // learning-headphone
+      "1350138558299770930", //ripping-it
+      "1400903907030466711",//super-stratum
+      "1417583958710812803",//unmute
+      "1427823151735115856",//orio-supplements
+      "1384217042592337950",//pilates-project
+      "1298788649378254898", //lucky-chuck
+    ],
+  },
+  {
+    id: "927152043901194252",  // Chinedu 
+    channels: [
+      "1280198714144854067",  // wilkerdos-email
+      "1285653192662843513",  // steen 
+      "1287933850864975912",  //nord-labs
+      "1289692995339423894", //blingd-up
+      "1371582264785506414", // incommon-beauty
+      "1303086358663004272", //dr-baron
+      "1392358861314195467",// medicine-box
+      "1405357043270811739", //chrome-horse
+      "1429940950381363472", //6am-run
+      "1430276051409571861", //houston-ridge
+    ],
+  },
+  {
+    id: "1044490910299344947", // Sunday 
+    channels: [
+      "1268654542229078138", //egherbs
+      "1293003358835310674", //bearefoot
+      "1347241920837189722",//maverick
+      "1400565862041260173",//lovei
+    ],
+  },
+    {
+    id: "1018088392883437578", //Emmanuel
+    channels: [
+      "1399837691465437307", //covrix
+      "1401931473501687888", //forever-fearless
+      "1397650955209670737", //sweet-tooth
+      "1410363931943370866",//compete-every-day
+      "1415437343309037708",//tactillian
+      "1418273553282760835",//thats-my-pan
+      "1423084812234920036",//zeus-labes
+    ],
+  },
+  {
+    id: "1103342081101021256", //Rabi
+    channels: [
+      "1425525436926005298", //exotic-ammo
+      "1407133150810996868",//cronk-nutrients
+      "1430343133841063966",//ink-beetle
+    ],
+  }, 
+  {
+    id: "1193254730605015134", //David Allen
+    channels: [
+      "1431179512087052308", //centurion-labz
+      "1430342550799253555", //nidra-goods
+      "1387528654258569418", //happy-confections
+      "1272947141815308360",// steven-dann
+      "1404157497220006039", //baja-llama
+     
+    ],
+  },
+    {
+    id: "1415207780435890197", //Fortune
+    channels: [
+      "1430276823669014629", // dohjoy
+      "1323095953414033538", // health-watch
+      "1392569533679665152",//magnetic-bag-company
+     
+     
+    ],
+  },
+  
+];
+
+
+const MANAGER_ID = "960685716852072458"; // Taiwo
+const SENIOR_MANAGER_ID = "715472164832149524"; // Mohamed
+
+// === TIMER SETTINGS ===
+const FIRST_REMINDER = 1.5 * 60 * 60 * 1000;  // 1.5 hours
+const SECOND_REMINDER = 30 * 60 * 1000;       // 30 minutes
+const THIRD_REMINDER = 30 * 60 * 1000;        // 30 minutes
+const FOURTH_REMINDER = 48 * 60 * 60 * 1000;  // 48 hours
+
+// === TRACKERS ===
+const supervisorTrackers = new Map();
+const seniorTimers = new Map();
+
+// === HELPERS ===
+function getSupervisorByChannel(channelId) {
+  return SUPERVISORS.find((sup) => sup.channels.includes(channelId));
+}
+
+function ensureSupervisorMap(supervisorId) {
+  if (!supervisorTrackers.has(supervisorId)) {
+    supervisorTrackers.set(supervisorId, new Map());
+  }
+  return supervisorTrackers.get(supervisorId);
+}
+
+// ⭐ Senior Manager 48-hour Timer
+function startSeniorTimer(supervisorId, userId, msgLink, serverName) {
+  const t = setTimeout(async () => {
+    try {
+      const senior = await client.users.fetch(SENIOR_MANAGER_ID);
+
+      await senior.send(
+        `⚠️ **Supervisor <@${supervisorId}> or Manager <@${MANAGER_ID}> has NOT replied**\n` +
+        `Client: <@${userId}>\n` +
+        `Link: ${msgLink}\n` +
+        `${serverName}`
+      );
+
+    } catch (err) {
+      console.error("❌ Error sending senior manager DM:", err);
+    }
+  }, FOURTH_REMINDER);
+
+  seniorTimers.set(msgLink, t);
+}
+
+// =========================================================
+// EVENT: CLIENT MESSAGE → START TIMER
+// =========================================================
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  const supervisor = getSupervisorByChannel(message.channel.id);
+  if (!supervisor) return;
+
+  // Ignore supervisor and manager messages
+  if (message.author.id === supervisor.id || message.author.id === MANAGER_ID) return;
+
+  const supervisorId = supervisor.id;
+
+  // ⭐ NEW — STOP new timers if this channel already has active one
+  const existingSupervisorMap = supervisorTrackers.get(supervisorId);
+  if (existingSupervisorMap && existingSupervisorMap.has(message.channel.id)) {
+    console.log(`⛔ Channel ${message.channel.id} already running timers → ignoring client message`);
+    return;
+  }
+
+  // Create supervisor map
+  const supervisorMessages = ensureSupervisorMap(supervisorId);
+
+  // ⭐ Ensure CHANNEL MAP exists
+  if (!supervisorMessages.has(message.channel.id)) {
+    supervisorMessages.set(message.channel.id, new Map());
+  }
+
+  const channelMap = supervisorMessages.get(message.channel.id);
+
+  const msgId = message.id;
+  const userId = message.author.id;
+  const msgLink = `https://discord.com/channels/${message.guildId}/${message.channel.id}/${message.id}`;
+
+  console.log(`📩 Tracking message ${msgId} for supervisor ${supervisorId} in channel ${message.channel.id}`);
+
+  // ⭐ Start senior manager timer
+  startSeniorTimer(supervisorId, userId, msgLink, message.guild.name);
+
+  // === MAIN TIMERS ===
+  const timers = {};
+
+  timers.supervisorTimer = setTimeout(async () => {
+    try {
+      const supUser = await client.users.fetch(supervisorId);
+      await supUser.send(
+        `⏰ Hey <@${supervisorId}>, you haven’t replied to <@${userId}>'s message yet!\nLink: ${msgLink}`
+      );
+
+      timers.reminderTimer = setTimeout(async () => {
+        try {
+          await supUser.send(
+            `⚠️ Reminder: You still haven’t replied to <@${userId}>'s message.\nLink: ${msgLink}`
+          );
+
+          timers.managerTimer = setTimeout(async () => {
+            try {
+              const manager = await client.users.fetch(MANAGER_ID);
+              await manager.send(
+                `🚨 Supervisor <@${supervisorId}> has not replied to <@${userId}>'s message.\nLink: ${msgLink}`
+              );
+
+            } catch (err) {
+              console.error("❌ Error sending manager DM:", err);
+            }
+          }, THIRD_REMINDER);
+
+        } catch (err) {
+          console.error("❌ Error sending reminder:", err);
+        }
+      }, SECOND_REMINDER);
+
+    } catch (err) {
+      console.error("❌ Error sending supervisor DM:", err);
+    }
+  }, FIRST_REMINDER);
+
+  channelMap.set(msgId, {
+    userId,
+    channelId: message.channel.id,
+    messageLink: msgLink,
+    timers,
+  });
+});
+
+// =========================================================
+// EVENT: SUPERVISOR or MANAGER REPLY → CLEAR TIMERS
+// =========================================================
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  const supervisor = getSupervisorByChannel(message.channel.id);
+  if (!supervisor) return;
+
+  const isSupervisor = message.author.id === supervisor.id;
+  const isManager = message.author.id === MANAGER_ID;
+
+  if (!isSupervisor && !isManager) return;
+
+  const supervisorMessages = supervisorTrackers.get(supervisor.id);
+  if (!supervisorMessages) return;
+
+  const channelMap = supervisorMessages.get(message.channel.id);
+  if (!channelMap) return;
+
+  for (const [msgId, tracked] of channelMap.entries()) {
+
+    // Stop senior 48h timer
+    const st = seniorTimers.get(tracked.messageLink);
+    if (st) {
+      clearTimeout(st);
+      seniorTimers.delete(tracked.messageLink);
+    }
+
+    // Stop main timers
+    clearTimeout(tracked.timers.supervisorTimer);
+    clearTimeout(tracked.timers.reminderTimer);
+    clearTimeout(tracked.timers.managerTimer);
+
+    channelMap.delete(msgId);
+
+    console.log(
+      `✅ ${isManager ? "Manager" : "Supervisor"} ${message.author.id} replied → cleared timers for message ${msgId}`
+    );
+  }
+
+  if (channelMap.size === 0) supervisorMessages.delete(message.channel.id);
+  if (supervisorMessages.size === 0) supervisorTrackers.delete(supervisor.id);
+});
+
+// =========================================================
+// EVENT: REACTION by SUPERVISOR or MANAGER → CLEAR TIMERS
+// =========================================================
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.bot) return;
+
+  const message = reaction.message;
+
+  const supervisor = getSupervisorByChannel(message.channel.id);
+  if (!supervisor) return;
+
+  const isSupervisor = user.id === supervisor.id;
+  const isManager = user.id === MANAGER_ID;
+
+  if (!isSupervisor && !isManager) return;
+
+  const supervisorMessages = supervisorTrackers.get(supervisor.id);
+  if (!supervisorMessages) return;
+
+  const channelMap = supervisorMessages.get(message.channel.id);
+  if (!channelMap) return;
+
+  for (const [msgId, tracked] of channelMap.entries()) {
+
+    // Stop senior timer
+    const st = seniorTimers.get(tracked.messageLink);
+    if (st) {
+      clearTimeout(st);
+      seniorTimers.delete(tracked.messageLink);
+    }
+
+    clearTimeout(tracked.timers.supervisorTimer);
+    clearTimeout(tracked.timers.reminderTimer);
+    clearTimeout(tracked.timers.managerTimer);
+
+    channelMap.delete(msgId);
+
+    console.log(`🟢 ${isManager ? "Manager" : "Supervisor"} ${user.id} reacted → cleared timers for ${msgId}`);
+  }
+
+  if (channelMap.size === 0) supervisorMessages.delete(message.channel.id);
+  if (supervisorMessages.size === 0) supervisorTrackers.delete(supervisor.id);
+});
+
+// === SHUTDOWN CLEANUP ===
+process.on("SIGINT", () => {
+  console.log("🛑 Shutting down...");
+  for (const [, supMap] of supervisorTrackers) {
+    for (const [, channelMap] of supMap) {
+      for (const [, tracked] of channelMap) {
+        clearTimeout(tracked.timers.supervisorTimer);
+        clearTimeout(tracked.timers.reminderTimer);
+        clearTimeout(tracked.timers.managerTimer);
+      }
+    }
+  }
+
+  for (const [, t] of seniorTimers) clearTimeout(t);
+
+  process.exit();
+});
+
+client.once("ready", () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
+
+client.login(process.env.DISCORD_TOKEN);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Add mulitpe magner Teniton marketign          
+
+
+
+import { Client, GatewayIntentBits, Partials } from "discord.js";
+import dotenv from "dotenv";
+dotenv.config();
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions
+  ],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction],
+});
+
+// =====================================================
+// CONFIG: SUPERVISORS + THEIR OWN MANAGERS
+// =====================================================
+
+
+
+const SUPERVISORS = [
+  {
+    id: "1176921674847899658", //Prajit
+    channels: [
+      "1337431949479907399", //prepa-pizza
+      "1331965624972218471", //holistic-honey
+      "1390384030289100923", // club-furniture
+      "1395279077492920340", //astrid-organics
+      "1398040825233145907", // learning-headphone
+      "1350138558299770930", //ripping-it
+      "1400903907030466711",//super-stratum
+      "1417583958710812803",//unmute
+      "1427823151735115856",//orio-supplements
+      "1384217042592337950",//pilates-project
+      "1298788649378254898", //lucky-chuck
+      
+    ],
+     managers: ["948308916499009586"]
+  },
+  {
+    id: "927152043901194252",  // Chinedu 
+    channels: [
+      "1280198714144854067",  // wilkerdos-email
+      "1285653192662843513",  // steen 
+      "1287933850864975912",  //nord-labs
+      "1289692995339423894", //blingd-up
+      "1371582264785506414", // incommon-beauty
+      "1303086358663004272", //dr-baron
+      "1392358861314195467",// medicine-box
+      "1405357043270811739", //chrome-horse
+      "1429940950381363472", //6am-run
+      "1430276051409571861", //houston-ridge
+    ],
+     managers: ["948308916499009586"]
+  },
+  {
+    id: "1044490910299344947", // Sunday 
+    channels: [
+      "1268654542229078138", //egherbs
+      "1293003358835310674", //bearefoot
+      "1347241920837189722",//maverick
+      "1400565862041260173",//lovei
+    ],
+     managers: ["948308916499009586"]
+  },
+    {
+    id: "1018088392883437578", //Emmanuel
+    channels: [
+      "1399837691465437307", //covrix
+      "1401931473501687888", //forever-fearless
+      "1397650955209670737", //sweet-tooth
+      "1410363931943370866",//compete-every-day
+      "1415437343309037708",//tactillian
+      "1418273553282760835",//thats-my-pan
+      "1423084812234920036",//zeus-labes
+    ],
+     managers: ["948308916499009586"]
+  },
+  {
+    id: "1103342081101021256", //Rabi
+    channels: [
+      "1425525436926005298", //exotic-ammo
+      "1407133150810996868",//cronk-nutrients
+      "1430343133841063966",//ink-beetle
+    ],
+     managers: ["960685716852072458"]
+  }, 
+  {
+    id: "1193254730605015134", //David Allen
+    channels: [
+      "1431179512087052308", //centurion-labz
+      "1430342550799253555", //nidra-goods
+      "1387528654258569418", //happy-confections
+      "1272947141815308360",// steven-dann
+      "1404157497220006039", //baja-llama
+     
+    ],
+     managers: ["960685716852072458"]
+  },
+    {
+    id: "1415207780435890197", //Fortune
+    channels: [
+      "1430276823669014629", // dohjoy
+      "1323095953414033538", // health-watch
+      "1392569533679665152",//magnetic-bag-company
+     
+     
+    ],
+     managers: ["960685716852072458"]
+  },
+  
+];
+
+
+const SENIOR_MANAGER_ID = "715472164832149524";
+
+// =====================================================
+// TIMER SETTINGS
+// =====================================================
+const FIRST_REMINDER = 1.5 * 60 * 60 * 1000;  // 1.5 hours
+const SECOND_REMINDER = 30 * 60 * 1000;       // 30 minutes
+const THIRD_REMINDER = 30 * 60 * 1000;        // 30 minutes
+const FOURTH_REMINDER = 48 * 60 * 60 * 1000;  // 48 hours
+
+// =====================================================
+// TRACKING MAPS
+// =====================================================
+const supervisorTrackers = new Map();
+const seniorTimers = new Map();
+
+// =====================================================
+// HELPERS
+// =====================================================
+function getSupervisorByChannel(channelId) {
+  return SUPERVISORS.find((s) => s.channels.includes(channelId));
+}
+
+function ensureSupervisorMap(supervisorId) {
+  if (!supervisorTrackers.has(supervisorId)) {
+    supervisorTrackers.set(supervisorId, new Map());
+  }
+  return supervisorTrackers.get(supervisorId);
+}
+
+// ⭐ Senior Manager Timer
+function startSeniorTimer(supervisorId, userId, msgLink, serverName) {
+  const timer = setTimeout(async () => {
+    try {
+      const senior = await client.users.fetch(SENIOR_MANAGER_ID);
+
+      await senior.send(
+        `⚠️ **Supervisor <@${supervisorId}> or their manager has NOT replied in 48 hours**\n` +
+        `Client: <@${userId}>\nLink: ${msgLink}\n${serverName}`
+      );
+
+    } catch (err) {
+      console.error("❌ Error sending senior manager DM:", err);
+    }
+  }, FOURTH_REMINDER);
+
+  seniorTimers.set(msgLink, timer);
+}
+
+// =========================================================
+// EVENT — CLIENT MESSAGE → START TIMERS
+// =========================================================
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  const supervisor = getSupervisorByChannel(message.channel.id);
+  if (!supervisor) return;
+
+  // Ignore supervisor or manager messages
+  if (message.author.id === supervisor.id) return;
+  if (supervisor.managers.includes(message.author.id)) return;
+
+  const supervisorId = supervisor.id;
+
+  // Prevent duplicate timers per channel
+  const existing = supervisorTrackers.get(supervisorId);
+  if (existing && existing.has(message.channel.id)) return;
+
+  const supervisorMessages = ensureSupervisorMap(supervisorId);
+
+  if (!supervisorMessages.has(message.channel.id)) {
+    supervisorMessages.set(message.channel.id, new Map());
+  }
+
+  const channelMap = supervisorMessages.get(message.channel.id);
+
+  const msgId = message.id;
+  const userId = message.author.id;
+  const msgLink = `https://discord.com/channels/${message.guildId}/${message.channel.id}/${message.id}`;
+
+  // Start senior timer
+  startSeniorTimer(supervisorId, userId, msgLink, message.guild.name);
+
+  // ===========================
+  // TIMER LOGIC
+  // ===========================
+  const timers = {};
+
+  timers.supervisorTimer = setTimeout(async () => {
+    try {
+      const supUser = await client.users.fetch(supervisorId);
+      await supUser.send(
+        `⏰ You have not replied to <@${userId}>.\n${msgLink}`
+      );
+
+      timers.reminderTimer = setTimeout(async () => {
+        await supUser.send(
+          `⚠️ Reminder: Still no reply to <@${userId}>.\n${msgLink}`
+        );
+
+        timers.managerTimer = setTimeout(async () => {
+          try {
+            // SEND ALERT ONLY TO ASSIGNED MANAGERS
+            for (const mgrId of supervisor.managers) {
+              const mgrUser = await client.users.fetch(mgrId);
+              await mgrUser.send(
+                `🚨 Supervisor <@${supervisorId}> has not replied in <#${message.channel.id}>.\n${msgLink}`
+              );
+            }
+          } catch (err) {
+            console.error("❌ Manager DM error:", err);
+          }
+        }, THIRD_REMINDER);
+
+      }, SECOND_REMINDER);
+
+    } catch (err) {
+      console.error("❌ Supervisor DM error:", err);
+    }
+  }, FIRST_REMINDER);
+
+  channelMap.set(msgId, {
+    userId,
+    messageLink: msgLink,
+    timers
+  });
+});
+
+// =========================================================
+// EVENT — SUPERVISOR or ASSIGNED MANAGER REPLY → CLEAR TIMERS
+// =========================================================
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+
+  const supervisor = getSupervisorByChannel(message.channel.id);
+  if (!supervisor) return;
+
+  const isSupervisor = message.author.id === supervisor.id;
+  const isAssignedManager = supervisor.managers.includes(message.author.id);
+
+  if (!isSupervisor && !isAssignedManager) return;
+
+  const supervisorMessages = supervisorTrackers.get(supervisor.id);
+  if (!supervisorMessages) return;
+
+  const channelMap = supervisorMessages.get(message.channel.id);
+  if (!channelMap) return;
+
+  for (const [msgId, tracked] of channelMap.entries()) {
+    const st = seniorTimers.get(tracked.messageLink);
+    if (st) {
+      clearTimeout(st);
+      seniorTimers.delete(tracked.messageLink);
+    }
+
+    clearTimeout(tracked.timers.supervisorTimer);
+    clearTimeout(tracked.timers.reminderTimer);
+    clearTimeout(tracked.timers.managerTimer);
+
+    channelMap.delete(msgId);
+  }
+
+  if (channelMap.size === 0) supervisorMessages.delete(message.channel.id);
+  if (supervisorMessages.size === 0) supervisorTrackers.delete(supervisor.id);
+});
+
+// =========================================================
+// EVENT — REACTION BY SUPERVISOR OR THEIR MANAGERS → CLEAR TIMERS
+// =========================================================
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.bot) return;
+
+  const message = reaction.message;
+  const supervisor = getSupervisorByChannel(message.channel.id);
+  if (!supervisor) return;
+
+  const isSupervisor = user.id === supervisor.id;
+  const isAssignedManager = supervisor.managers.includes(user.id);
+
+  if (!isSupervisor && !isAssignedManager) return;
+
+  const supervisorMessages = supervisorTrackers.get(supervisor.id);
+  if (!supervisorMessages) return;
+
+  const channelMap = supervisorMessages.get(message.channel.id);
+  if (!channelMap) return;
+
+  for (const [msgId, tracked] of channelMap.entries()) {
+    const st = seniorTimers.get(tracked.messageLink);
+    if (st) {
+      clearTimeout(st);
+      seniorTimers.delete(tracked.messageLink);
+    }
+
+    clearTimeout(tracked.timers.supervisorTimer);
+    clearTimeout(tracked.timers.reminderTimer);
+    clearTimeout(tracked.timers.managerTimer);
+
+    channelMap.delete(msgId);
+  }
+
+  if (channelMap.size === 0) supervisorMessages.delete(message.channel.id);
+  if (supervisorMessages.size === 0) supervisorTrackers.delete(supervisor.id);
+});
+
+// =========================================================
+// CLEANUP
+// =========================================================
+process.on("SIGINT", () => {
+  for (const [, supMap] of supervisorTrackers) {
+    for (const [, channelMap] of supMap) {
+      for (const [, tracked] of channelMap) {
+        clearTimeout(tracked.timers.supervisorTimer);
+        clearTimeout(tracked.timers.reminderTimer);
+        clearTimeout(tracked.timers.managerTimer);
+      }
+    }
+  }
+  for (const [, t] of seniorTimers) clearTimeout(t);
+  process.exit();
+});
+
+client.once("ready", () => {
+  console.log(`✅ Logged in as ${client.user.tag}`);
+});
+
+client.login(process.env.DISCORD_TOKEN);
