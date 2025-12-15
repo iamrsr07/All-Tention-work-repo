@@ -4,7 +4,8 @@ import axios from "axios";
 
 // ------------------- SETTINGS -------------------
 const WATCH_CHANNEL_ID = "1432708334665994280";
-const WEBHOOK_URL = "https://tention.app.n8n.cloud/webhook-test/client-alert";
+ const WEBHOOK_URL = "https://tention.app.n8n.cloud/webhook-test/client-alert";
+//const WEBHOOK_URL =      " https://tention.app.n8n.cloud/webhook/client-alert"
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;   // Use .env properly
 // ------------------------------------------------
 

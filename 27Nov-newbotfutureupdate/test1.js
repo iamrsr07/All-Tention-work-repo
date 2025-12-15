@@ -17,136 +17,57 @@ const client = new Client({
 // =====================================================
 
 const SUPERVISORS = [
-  {
-    id: "1176921674847899658", //Prajit
-    channels: [
-      "1337431949479907399", //prepa-pizza
-      "1331965624972218471", //holistic-honey
-      "1390384030289100923", // club-furniture
-      "1395279077492920340", //astrid-organics
-      "1398040825233145907", // learning-headphone
-      "1350138558299770930", //ripping-it
-      "1400903907030466711",//super-stratum
-      "1417583958710812803",//unmute
-      "1427823151735115856",//orio-supplements
-      "1384217042592337950",//pilates-project
-      "1298788649378254898", //lucky-chuck
-      
-    ],
-     managers: ["948308916499009586"]
-  },
-  {
-    id: "927152043901194252",  // Chinedu 
-    channels: [
-      "1280198714144854067",  // wilkerdos-email
-      "1285653192662843513",  // steen 
-      "1287933850864975912",  //nord-labs
-      "1289692995339423894", //blingd-up
-      "1371582264785506414", // incommon-beauty
-      "1303086358663004272", //dr-baron
-      "1392358861314195467",// medicine-box
-      "1405357043270811739", //chrome-horse
-      "1429940950381363472", //6am-run
-      "1430276051409571861", //houston-ridge
-    ],
-     managers: ["948308916499009586"]
-  },
-  {
-    id: "1044490910299344947", // Sunday 
-    channels: [
-      "1268654542229078138", //egherbs
-      "1293003358835310674", //bearefoot
-      "1347241920837189722",//maverick
-      "1400565862041260173",//lovei
-      "1447070783825252486",//purely-nutrient
-    ],
-     managers: ["948308916499009586"]
-  },
-    {
-    id: "1018088392883437578", //Emmanuel
-    channels: [
-     // "1399837691465437307", //covrix
-      "1401931473501687888", //forever-fearless
-      "1397650955209670737", //sweet-tooth
-      //"1410363931943370866",//compete-every-day
-      "1415437343309037708",//tactillian
-      "1418273553282760835",//thats-my-pan
-     // "1423084812234920036",//zeus-labes
-       "1447675302330372127",//game-outpost
+{
+id: "1427987539691835442", //Prajit
+channels: [
+"1427650466598354954", //prepa-pizza
+"1427651512477155398", //holistic-honey
 
-    ],
-     managers: ["948308916499009586"]
-  },
-  {
-    id: "1103342081101021256", //Rabi
-    channels: [
-      //"1425525436926005298", //exotic-ammo
-      "1407133150810996868",//cronk-nutrients
-      "1430343133841063966",//ink-beetle
-       "1438258715856867439",//raveal
-      "1443129698367311952",//natures-fix
-    ],
-     managers: ["960685716852072458"]
-  }, 
-  {
-    id: "1193254730605015134", //David Allen
-    channels: [
-      "1431179512087052308", //centurion-labz
-      "1430342550799253555", //nidra-goods
-      "1387528654258569418", //happy-confections
-      "1272947141815308360",// steven-dann
-      "1404157497220006039", //baja-llama
-      "1442572686139195634",// mintworx
-      "1445690238285647892", //nervi-labs
-      
-     
-    ],
-     managers: ["960685716852072458"]
-  },
-    {
-    id: "1415207780435890197", //Fortune
-    channels: [
-      "1430276823669014629", // dohjoy
-      "1323095953414033538", // health-watch
-      "1392569533679665152",//magnetic-bag-company
-       "1438201275635470377", // society
-      "1436410107331219547", // fort-core
-      "1433915509094617230",//mcfeelys
-     
-     
-    ],
-     managers: ["960685716852072458"]
-  },
-   {
-    id: "909440524035960842", //Khalid
-    channels: [
-      "1404922864842440857", // Tiger-fitness
-      "1407032425204285631", // ocean-crawler
-      "1407114734091632641",// warlord
-       "1410360251617640500", // 7-degrees
-      "1411075847837712384", // gatsby-shoes
-      "1412869802925625356",// iflo
-       "1423807755323572265", // details-by-tati
-      "1428855326714626122",// vogue-candles
 
-     
-     
-    ],
-     managers: ["960685716852072458"]
-  },
-  
-  
+],
+managers: ["1427987539691835442"]
+
+
+
+},{
+id: "1427987539691835442", //Prajit
+channels: [
+"1427650949954142239", //prepa-pizza
+"1427651063393030214", //holistic-honey
+
+
+],
+managers: ["960685716852072458"]
+
+
+
+},
+
+
+
+
 ];
 
-const SENIOR_MANAGER_ID = "715472164832149524";
+const SENIOR_MANAGER_ID = "1235236826793381908";
+
+// =====================================================
+// GLOBAL MANAGER PROTECTION — FIX IMPORTANT
+// =====================================================
+const ALL_MANAGERS = new Set(SUPERVISORS.flatMap(s => s.managers));
 
 // =====================================================
 // TIMER SETTINGS
 // =====================================================
-const FIRST_REMINDER = 1.5 * 60 * 60 * 1000;
-const SECOND_REMINDER = 30 * 60 * 1000;
-const THIRD_REMINDER = 30 * 60 * 1000;
-const FOURTH_REMINDER = 48 * 60 * 60 * 1000;
+const FIRST_REMINDER = 30 * 1000;
+
+// Second reminder: 20 seconds
+const SECOND_REMINDER = 20 * 1000;
+
+// Third reminder: 10 seconds
+const THIRD_REMINDER = 10 * 1000;
+
+// Fourth reminder: 1 minute
+const FOURTH_REMINDER = 60 * 1000;
 
 // =====================================================
 // TRACKING MAPS
@@ -168,15 +89,30 @@ function ensureSupervisorMap(supervisorId) {
   return supervisorTrackers.get(supervisorId);
 }
 
-function startSeniorTimer(supervisorId, userId, msgLink, serverName) {
+function startSeniorTimer(supervisorId, userId, msgLink, serverName, channelId, supervisor) {
   const timer = setTimeout(async () => {
     try {
       const senior = await client.users.fetch(SENIOR_MANAGER_ID);
 
-      await senior.send(
-        `⚠️ **Supervisor <@${supervisorId}> or their manager has NOT replied in 48 hours**\n` +
-        `Client: <@${userId}>\nLink: ${msgLink}\n${serverName}`
+      // Fetch supervisor username
+      const supervisorUser = await client.users.fetch(supervisorId);
+
+      // Fetch each manager username
+      const managerList = await Promise.all(
+        supervisor.managers.map(async (mgrId) => {
+          const usr = await client.users.fetch(mgrId);
+          return `<@${mgrId}>`;
+        })
       );
+
+await senior.send(
+  `⚠️Clients <@${supervisorId}> OR Manager ${managerList.join(", ")} has NOT replied\n` +
+  `Client: <@${userId}>\n` +
+  `Channel: <#${channelId}>\n` +
+  `Link: ${msgLink}`
+);
+
+
 
     } catch (err) {
       console.error("❌ Error sending senior manager DM:", err);
@@ -186,11 +122,18 @@ function startSeniorTimer(supervisorId, userId, msgLink, serverName) {
   seniorTimers.set(msgLink, timer);
 }
 
+
+
+
 // =========================================================
 // EVENT — CLIENT MESSAGE → START TIMERS
+// FIX: ANY MANAGER MESSAGE NEVER STARTS TIMER
 // =========================================================
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
+
+  // NEW FIX — Manager messages MUST NOT start timers anywhere
+  if (ALL_MANAGERS.has(message.author.id)) return;
 
   const supervisor = getSupervisorByChannel(message.channel.id);
   if (!supervisor) return;
@@ -215,7 +158,15 @@ client.on("messageCreate", async (message) => {
   const userId = message.author.id;
   const msgLink = `https://discord.com/channels/${message.guildId}/${message.channel.id}/${message.id}`;
 
-  startSeniorTimer(supervisorId, userId, msgLink, message.guild.name);
+startSeniorTimer(
+  supervisorId,
+  userId,
+  msgLink,
+  message.guild.name,
+  message.channel.id,
+  supervisor
+);
+
 
   const timers = {};
 
@@ -223,12 +174,12 @@ client.on("messageCreate", async (message) => {
     try {
       const supUser = await client.users.fetch(supervisorId);
       await supUser.send(
-        `⏰ You have not replied to <@${userId}>.\n${msgLink}`
+        `⏰ You have not replied to <@${userId}>\n<#${message.channel.id}>\n ${msgLink}`
       );
 
       timers.reminderTimer = setTimeout(async () => {
         await supUser.send(
-          `⚠️ Reminder: Still no reply to <@${userId}>.\n${msgLink}`
+          `⚠️ Reminder: Still no reply to <@${userId}>\n <#${message.channel.id}>.\n ${msgLink}`
         );
 
         timers.managerTimer = setTimeout(async () => {
@@ -277,10 +228,8 @@ client.on("messageCreate", async (message) => {
 
   const channelMap = supervisorMessages.get(message.channel.id);
 
- 
-  // Any manager reply — clear only timers for this channel
+  // Any manager clears timers only for this channel
 if (!isSupervisor && ALL_MANAGERS.has(message.author.id)) {
-  const channelMap = supervisorMessages.get(message.channel.id);
   if (!channelMap) return;
 
   for (const [msgId, tracked] of channelMap.entries()) {
@@ -304,7 +253,8 @@ if (!isSupervisor && ALL_MANAGERS.has(message.author.id)) {
 }
 
 
-  // Existing channel-based clearing
+
+  // Supervisor clears channel timers only
   if (!channelMap) return;
 
   for (const [msgId, tracked] of channelMap.entries()) {
@@ -336,7 +286,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
   if (!supervisor) return;
 
   const isSupervisor = user.id === supervisor.id;
-  const isAnyManager = ALL_MANAGERS.has(user.id);
+const isAnyManager = ALL_MANAGERS.has(user.id);
 
 if (!isSupervisor && !isAnyManager) return;
 
