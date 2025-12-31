@@ -1,8 +1,16 @@
-import 'dotenv/config';
+import "dotenv/config";
 import { Client, GatewayIntentBits } from "discord.js";
 import axios from "axios";
 
-// Create Discord client with message reading permissions
+const WATCH_CHANNEL_ID = "1432708334665994280";
+const WEBHOOK_URL = process.env.N8N_WEBHOOK_URL?.trim();
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+
+if (!DISCORD_TOKEN) {
+  console.error("❌ Missing Discord Bot Token!");
+  process.exit(1);
+}
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -11,49 +19,40 @@ const client = new Client({
   ],
 });
 
-// ✅ Replace this with your actual channel ID
-const WATCH_CHANNEL_ID = "1427543130856751136"; // <--- your channel ID here
-
-// n8n webhook URL
-const WEBHOOK_URL = "https://tention.app.n8n.cloud/webhook-test/client-alert";
-
-client.on("ready", () => {
+client.once("ready", () => {
   console.log(`🤖 Bot logged in as ${client.user.tag}`);
   console.log(`👀 Watching channel ID: ${WATCH_CHANNEL_ID}`);
+
+  client.user.setPresence({
+    status: "online",
+    activities: [{ name: "Watching client alerts" }],
+  });
 });
 
 client.on("messageCreate", async (message) => {
   try {
-    // Ignore bot messages
     if (message.author.bot) return;
-
-    // ✅ Only watch messages in one specific channel
     if (message.channel.id !== WATCH_CHANNEL_ID) return;
+    if (!message.content.startsWith("New Client Alert!")) return;
 
-    // Log every message in that channel
-    console.log(`💬 Message detected in watched channel by ${message.author.username}`);
-    console.log("📝 Message Content:\n", message.content);
+    const payload = {
+      content: message.content,
+      channelId: message.channel.id,
+      channelName: message.channel.name,
+      author: message.author.username,
+      createdAt: message.createdAt.toISOString(),
+      messageUrl: `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`,
+    };
 
-    // ✅ Only send to n8n if it's a "New Client Alert!"
-    if (message.content.includes("New Client Alert!")) {
-      console.log("🚀 Sending message to n8n webhook...");
-
-      const payload = {
-        content: message.content,
-        channelId: message.channel.id,
-        channelName: message.channel.name,
-        author: message.author.username,
-        createdAt: message.createdAt,
-        messageUrl: `https://discord.com/channels/${message.guild.id}/${message.channel.id}/${message.id}`,
-      };
-
-      await axios.post(WEBHOOK_URL, payload);
-
-      console.log("✅ Successfully sent to n8n!");
-    }
+    await axios.post(WEBHOOK_URL, payload);
+    console.log("✅ Sent to n8n");
   } catch (error) {
-    console.error("❌ Error sending to n8n:", error.message);
+    console.error("❌ Webhook error:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(DISCORD_TOKEN);
